@@ -3,9 +3,45 @@
     <!-- Hero -->
     <Hero />
 
+    <!-- Search -->
+    <div class="container search">
+      <input @keyup.enter="$fetch" type="text" placeholder="Search" v-model.lazy="searchInput">
+      <button class="button" v-show="searchInput != ''" @click="clearSearch">Clear Search</button>
+    </div>
+
+    <!-- Loading -->
+    <Loading v-if="$fetchState.pending" />
     <!-- Movies -->
-    <div class="movies container">
-      <div id="movie-grid" class="movies-grid">
+    <div v-else class="movies container">
+      <!-- searched Movies -->
+      <div v-if="searchInput !== ''" id="movie-grid" class="movies-grid">
+        <div class="movie" v-for="(movie, index) in searchedMovies" :key="index">
+          <div class="movie-img">
+            <img :src="`https://image.tmdb.org/t/p/w500/${movie.poster_path}`" alt="">
+            <p class="review">{{ movie.vote_average }}</p>
+            <p class="overview">{{ movie.overview }}</p>
+          </div>
+          <div class="info">
+            <p class="title">
+              {{ movie.title.slice(0, 25) }}
+              <span v-if="movie.title.length > 25">...</span>
+            </p>
+            <p class="release">
+              Released
+              {{
+                new Date(movie.release_date).toLocaleString('en-us', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                })
+              }}
+            </p>
+            <NuxtLink class="button button-light" :to="{name: 'movies-movieid', params: {movieid: movie.id}}">Get more info</NuxtLink>
+          </div>
+        </div>
+      </div>
+      <!-- Now Streaming -->
+      <div v-else id="movie-grid" class="movies-grid">
         <div class="movie" v-for="(movie, index) in movies" :key="index">
           <div class="movie-img">
             <img :src="`https://image.tmdb.org/t/p/w500/${movie.poster_path}`" alt="">
@@ -42,11 +78,19 @@
     data() {
       return {
         movies: [],
+        searchInput: "",
+        searchedMovies: [],
       }
     },
     async fetch() {
-      await this.getMovies();
+      if (this.searchInput === '') {
+        await this.getMovies();
+        return
+      };
+      await this.searchMovies();
+      
     },
+    fetchDelay: 2000,
     methods: {
       async getMovies() {
         const data = axios.get(
@@ -57,14 +101,52 @@
         result.data.results.forEach(movie => {
           this.movies.push(movie)
         });
-        console.log(this.movies);
+        console.log("Hi");
+      },
+
+      async searchMovies () {
+        const data = axios.get(
+          `https://api.themoviedb.org/3/search/movie?api_key=4da10dd7595edfe861411e559dde71dc&language=en-US&page=1&query=${this.searchInput}`
+        );
+        const result = await data;
+        result.data.results.forEach(movie => {
+          this.searchedMovies.push(movie)
+        });
+        // console.log(this.searchedMovies);
+      },
+
+      clearSearch() {
+        this.searchInput = '';
+        this.searchedMovies = [];
       }
     }
   }
 </script>
 
 <style lang="scss">
-
+.home {
+  .loading {
+    padding-top: 120px;
+    align-items: flex-start;
+  }
+  .search {
+    display: flex;
+    padding: 32px 16px;
+    input {
+      max-width: 350px;
+      width: 100%;
+      padding: 12px 6px;
+      font-size: 14px;
+      border: none;
+      &:focus {
+        outline: none;
+      }
+    }
+    .button {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
   .movies {
     padding: 32px 16px;
     .movies-grid {
@@ -142,5 +224,5 @@
       }
     }
   }
-
+}
 </style>
